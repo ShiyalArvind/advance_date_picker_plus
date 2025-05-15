@@ -62,7 +62,7 @@ class PickerPlusRangeDaysView extends StatelessWidget {
   final DateTime? selectedEndDate;
   final DateTime currentDate;
   final ValueChanged<DateTime> onStartDateChanged;
-  final ValueChanged<DateTime?> onEndDateChanged;
+  final ValueChanged<DateTime> onEndDateChanged;
   final DateTime minDate;
   final DateTime maxDate;
   final DateTime displayedMonth;
@@ -236,10 +236,11 @@ class PickerPlusRangeDaysView extends StatelessWidget {
         } else {
           dayWidget = InkResponse(
             onTap: () {
-              final isRangeComplete = selectedEndDateOnly != null && selectedStartDateOnly != null;
+              final isRangeComplete =
+                  selectedEndDateOnly != null && selectedStartDateOnly != null;
+
               if (isRangeComplete) {
                 onStartDateChanged(dayToBuild);
-                onEndDateChanged(null);
                 return;
               }
 

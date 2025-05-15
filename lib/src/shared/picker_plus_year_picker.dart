@@ -1,85 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'picker_plus_year_view.dart';
 import 'package:advanced_date_picker_plus/advanced_picker_plus_date_picker.dart';
 
-
-class PickerPlusYearsPickerController extends GetxController {
-  final DateTime minDate;
-  final DateTime maxDate;
-  final DateTime? initialDate;
-  final DateTime? selectedDate;
-
-  late final PageController pageController;
-  final displayedRange = Rxn<DateTimeRange>();
-  final selectedYear = Rxn<DateTime>();
-
-  PickerPlusYearsPickerController({
-    required this.minDate,
-    required this.maxDate,
-    this.initialDate,
-    this.selectedDate,
-  });
-
-  static const int yearsPerPage = 12;
-
-  int get pageCount => ((maxDate.year - minDate.year + 1) / yearsPerPage).ceil();
-
-  // Returns the page index for a given initial/current date.
-  int get initialPageNumber {
-    final clampedInit = PickerPlusDateUtilsX.clampDateToRange(
-        max: maxDate, min: minDate, date: DateTime.now());
-    final DateTime init = initialDate ?? clampedInit;
-    final int page = ((init.year - minDate.year + 1) / yearsPerPage).ceil() - 1;
-    return page < 0 ? 0 : page;
-  }
-
-  DateTimeRange calculateDateRange(int pageIndex) {
-    return DateTimeRange(
-      start: DateTime(minDate.year + pageIndex * yearsPerPage),
-      end: DateTime(minDate.year + pageIndex * yearsPerPage + yearsPerPage - 1),
-    );
-  }
-
-  @override
-  void onInit() {
-    pageController = PageController(initialPage: initialPageNumber);
-
-    displayedRange.value = calculateDateRange(initialPageNumber);
-
-    selectedYear.value = selectedDate != null
-        ? PickerPlusDateUtilsX.yearOnly(selectedDate!)
-        : null;
-
-    super.onInit();
-  }
-
-  void updateDisplayedRange(int pageIndex) {
-    displayedRange.value = calculateDateRange(pageIndex);
-  }
-
-  void jumpToInitialPage(DateTime? newInitialDate) {
-    final clampedInit = PickerPlusDateUtilsX.clampDateToRange(
-        max: maxDate, min: minDate, date: DateTime.now());
-    final init = newInitialDate ?? clampedInit;
-    final int page = ((init.year - minDate.year + 1) / yearsPerPage).ceil() - 1;
-    final int pageNum = page < 0 ? 0 : page;
-    pageController.jumpToPage(pageNum);
-    displayedRange.value = calculateDateRange(pageNum);
-  }
-
-  void updateSelectedYear(DateTime? newSelectedDate) {
-    selectedYear.value = newSelectedDate != null ? PickerPlusDateUtilsX.yearOnly(newSelectedDate) : null;
-  }
-
-  @override
-  void onClose() {
-    pageController.dispose();
-    super.onClose();
-  }
-}
-
-class PickerPlusYearsPicker extends StatelessWidget {
+class PickerPlusYearsPicker extends StatefulWidget {
   final DateTime? initialDate;
   final DateTime? currentDate;
   final DateTime? selectedDate;
@@ -134,162 +57,187 @@ class PickerPlusYearsPicker extends StatelessWidget {
   });
 
   @override
+  State<PickerPlusYearsPicker> createState() => _PickerPlusYearsPickerState();
+}
+
+class _PickerPlusYearsPickerState extends State<PickerPlusYearsPicker> {
+  static const int yearsPerPage = 12;
+
+  late final PageController _pageController;
+  late int _pageCount;
+  DateTimeRange? _displayedRange;
+  DateTime? _selectedYear;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _pageCount = ((widget.maxDate.year - widget.minDate.year + 1) / yearsPerPage).ceil();
+    final initialPage = _calculateInitialPage(widget.initialDate ?? DateTime.now());
+
+    _pageController = PageController(initialPage: initialPage);
+    _displayedRange = _calculateDateRange(initialPage);
+    _selectedYear = widget.selectedDate != null
+        ? PickerPlusDateUtilsX.yearOnly(widget.selectedDate!)
+        : null;
+  }
+
+  int _calculateInitialPage(DateTime date) {
+    final clamped = PickerPlusDateUtilsX.clampDateToRange(
+      max: widget.maxDate,
+      min: widget.minDate,
+      date: date,
+    );
+    final page = ((clamped.year - widget.minDate.year + 1) / yearsPerPage).ceil() - 1;
+    return page < 0 ? 0 : page;
+  }
+
+  DateTimeRange _calculateDateRange(int pageIndex) {
+    return DateTimeRange(
+      start: DateTime(widget.minDate.year + pageIndex * yearsPerPage),
+      end: DateTime(widget.minDate.year + pageIndex * yearsPerPage + yearsPerPage - 1),
+    );
+  }
+
+  void _onPageChanged(int index) {
+    setState(() {
+      _displayedRange = _calculateDateRange(index);
+    });
+  }
+
+  void _onSelectYear(DateTime value) {
+    final selected = PickerPlusDateUtilsX.yearOnly(value);
+    setState(() {
+      _selectedYear = selected;
+    });
+    widget.onDateSelected?.call(selected);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GetBuilder<PickerPlusYearsPickerController>(
-      init: PickerPlusYearsPickerController(
-        minDate: minDate,
-        maxDate: maxDate,
-        initialDate: initialDate,
-        selectedDate: selectedDate,
-      ),
-      global: false,
-      builder: (controller) {
-        final ColorScheme colorScheme = Theme.of(context).colorScheme;
-        final TextTheme textTheme = Theme.of(context).textTheme;
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final TextTheme textTheme = Theme.of(context).textTheme;
 
-        final TextStyle enabledCellsTextStyle = this.enabledCellsTextStyle ??
-            textTheme.titleLarge!.copyWith(
-              fontWeight: FontWeight.normal,
-              color: colorScheme.onSurface,
-            );
-        final BoxDecoration enabledCellsDecoration = this.enabledCellsDecoration;
-        final TextStyle disabledCellsTextStyle = this.disabledCellsTextStyle ??
-            textTheme.titleLarge!.copyWith(
-              fontWeight: FontWeight.normal,
-              color: colorScheme.onSurface.withOpacity(0.30),
-            );
-        final BoxDecoration disabledCellsDecoration = this.disabledCellsDecoration;
-        final TextStyle currentDateTextStyle = this.currentDateTextStyle ??
-            textTheme.titleLarge!.copyWith(
-              fontWeight: FontWeight.normal,
-              color: colorScheme.primary,
-            );
-        final BoxDecoration currentDateDecoration = this.currentDateDecoration ??
-            BoxDecoration(
-              border: Border.all(color: colorScheme.primary),
-              shape: BoxShape.circle,
-            );
-        final TextStyle selectedCellTextStyle = this.selectedCellTextStyle ??
-            textTheme.titleLarge!.copyWith(
-              fontWeight: FontWeight.normal,
-              color: colorScheme.onPrimary,
-            );
-        final BoxDecoration selectedCellDecoration = this.selectedCellDecoration ??
-            BoxDecoration(
-              color: colorScheme.primary,
-              shape: BoxShape.circle,
-            );
-        final leadingDateTextStyle = this.leadingDateTextStyle ??
-            TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: colorScheme.primary,
-            );
-        final slidersColor = this.slidersColor ?? colorScheme.primary;
-        final slidersSize = this.slidersSize ?? 20;
-        final splashColor = this.splashColor ??
-            selectedCellDecoration.color?.withOpacity(0.3) ??
-            colorScheme.primary.withOpacity(0.3);
-        final highlightColor = this.highlightColor ??
-            selectedCellDecoration.color?.withOpacity(0.3) ??
-            colorScheme.primary.withOpacity(0.3);
-
-        final Size size = MediaQuery.of(context).orientation == Orientation.portrait
-            ? const Size(328.0, 402.0)
-            : const Size(328.0, 300.0);
-
-        return LimitedBox(
-          maxHeight: size.height,
-          maxWidth: size.width,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // --- Header updates with displayed range ---
-              Obx(() {
-                final range = controller.displayedRange.value;
-                return PickerPlusHeader(
-                  previousPageSemanticLabel: previousPageSemanticLabel,
-                  nextPageSemanticLabel: nextPageSemanticLabel,
-                  centerLeadingDate: centerLeadingDate,
-                  leadingDateTextStyle: leadingDateTextStyle,
-                  slidersColor: slidersColor,
-                  slidersSize: slidersSize,
-                  onDateTap: () => onLeadingDateTap?.call(),
-                  displayedDate:
-                  (range != null)
-                      ? '${range.start.year} - ${range.end.year}'
-                      : '',
-                  onNextPage: () {
-                    final current = controller.pageController.page?.round() ??
-                        controller.pageController.initialPage;
-                    if (current < controller.pageCount - 1) {
-                      controller.pageController.nextPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.ease,
-                      );
-                    }
-                  },
-                  onPreviousPage: () {
-                    final current = controller.pageController.page?.round() ??
-                        controller.pageController.initialPage;
-                    if (current > 0) {
-                      controller.pageController.previousPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.ease,
-                      );
-                    }
-                  },
-                );
-              }),
-              const SizedBox(height: 10),
-              Flexible(
-                child: PageView.builder(
-                  scrollDirection: Axis.horizontal,
-                  controller: controller.pageController,
-                  itemCount: controller.pageCount,
-                  onPageChanged: (yearPage) {
-                    controller.updateDisplayedRange(yearPage);
-                  },
-                  itemBuilder: (context, index) {
-                    final yearRange = controller.calculateDateRange(index);
-
-                    return Obx(() =>
-                        PickerPlusYearView(
-                          key: ValueKey<DateTimeRange>(yearRange),
-                          currentDate: currentDate != null
-                              ? PickerPlusDateUtilsX.yearOnly(currentDate!)
-                              : PickerPlusDateUtilsX.yearOnly(DateTime.now()),
-                          maxDate: PickerPlusDateUtilsX.yearOnly(maxDate),
-                          minDate: PickerPlusDateUtilsX.yearOnly(minDate),
-                          displayedYearRange: yearRange,
-                          selectedDate: controller.selectedYear.value,
-                          enabledCellsDecoration: enabledCellsDecoration,
-                          enabledCellsTextStyle: enabledCellsTextStyle,
-                          disabledCellsDecoration: disabledCellsDecoration,
-                          disabledCellsTextStyle: disabledCellsTextStyle,
-                          currentDateDecoration: currentDateDecoration,
-                          currentDateTextStyle: currentDateTextStyle,
-                          selectedCellDecoration: selectedCellDecoration,
-                          selectedCellTextStyle: selectedCellTextStyle,
-                          highlightColor: highlightColor,
-                          splashColor: splashColor,
-                          splashRadius: splashRadius,
-                          onChanged: (value) {
-                            final selected = PickerPlusDateUtilsX.yearOnly(value);
-                            onDateSelected?.call(selected);
-                            controller.updateSelectedYear(selected);
-                          },
-                        )
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+    final enabledCellsTextStyle = widget.enabledCellsTextStyle ??
+        textTheme.titleLarge!.copyWith(
+          fontWeight: FontWeight.normal,
+          color: colorScheme.onSurface,
         );
-      },
+    final disabledCellsTextStyle = widget.disabledCellsTextStyle ??
+        textTheme.titleLarge!.copyWith(
+          fontWeight: FontWeight.normal,
+          color: colorScheme.onSurface.withOpacity(0.30),
+        );
+    final currentDateTextStyle = widget.currentDateTextStyle ??
+        textTheme.titleLarge!.copyWith(
+          fontWeight: FontWeight.normal,
+          color: colorScheme.primary,
+        );
+    final currentDateDecoration = widget.currentDateDecoration ??
+        BoxDecoration(
+          border: Border.all(color: colorScheme.primary),
+          shape: BoxShape.circle,
+        );
+    final selectedCellTextStyle = widget.selectedCellTextStyle ??
+        textTheme.titleLarge!.copyWith(
+          fontWeight: FontWeight.normal,
+          color: colorScheme.onPrimary,
+        );
+    final selectedCellDecoration = widget.selectedCellDecoration ??
+        BoxDecoration(
+          color: colorScheme.primary,
+          shape: BoxShape.circle,
+        );
+    final leadingDateTextStyle = widget.leadingDateTextStyle ??
+        TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: colorScheme.primary,
+        );
+
+    final slidersColor = widget.slidersColor ?? colorScheme.primary;
+    final slidersSize = widget.slidersSize ?? 20;
+    final splashColor = widget.splashColor ?? selectedCellDecoration.color?.withOpacity(0.3);
+    final highlightColor = widget.highlightColor ?? selectedCellDecoration.color?.withOpacity(0.3);
+
+    final Size size = MediaQuery.of(context).orientation == Orientation.portrait
+        ? const Size(328.0, 402.0)
+        : const Size(328.0, 300.0);
+
+    return LimitedBox(
+      maxHeight: size.height,
+      maxWidth: size.width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // --- Header ---
+          PickerPlusHeader(
+            previousPageSemanticLabel: widget.previousPageSemanticLabel,
+            nextPageSemanticLabel: widget.nextPageSemanticLabel,
+            centerLeadingDate: widget.centerLeadingDate,
+            leadingDateTextStyle: leadingDateTextStyle,
+            slidersColor: slidersColor,
+            slidersSize: slidersSize,
+            onDateTap: () => widget.onLeadingDateTap?.call(),
+            displayedDate: _displayedRange != null
+                ? '${_displayedRange!.start.year} - ${_displayedRange!.end.year}'
+                : '',
+            onNextPage: () {
+              final current = _pageController.page?.round() ?? _pageController.initialPage;
+              if (current < _pageCount - 1) {
+                _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.ease);
+              }
+            },
+            onPreviousPage: () {
+              final current = _pageController.page?.round() ?? _pageController.initialPage;
+              if (current > 0) {
+                _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.ease);
+              }
+            },
+          ),
+          const SizedBox(height: 10),
+          Flexible(
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: _pageCount,
+              scrollDirection: Axis.horizontal,
+              onPageChanged: _onPageChanged,
+              itemBuilder: (context, index) {
+                final range = _calculateDateRange(index);
+                return PickerPlusYearView(
+                  key: ValueKey<DateTimeRange>(range),
+                  currentDate: widget.currentDate != null
+                      ? PickerPlusDateUtilsX.yearOnly(widget.currentDate!)
+                      : PickerPlusDateUtilsX.yearOnly(DateTime.now()),
+                  maxDate: PickerPlusDateUtilsX.yearOnly(widget.maxDate),
+                  minDate: PickerPlusDateUtilsX.yearOnly(widget.minDate),
+                  displayedYearRange: range,
+                  selectedDate: _selectedYear,
+                  enabledCellsDecoration: widget.enabledCellsDecoration,
+                  enabledCellsTextStyle: enabledCellsTextStyle,
+                  disabledCellsDecoration: widget.disabledCellsDecoration,
+                  disabledCellsTextStyle: disabledCellsTextStyle,
+                  currentDateDecoration: currentDateDecoration,
+                  currentDateTextStyle: currentDateTextStyle,
+                  selectedCellDecoration: selectedCellDecoration,
+                  selectedCellTextStyle: selectedCellTextStyle,
+                  highlightColor: highlightColor,
+                  splashColor: splashColor,
+                  splashRadius: widget.splashRadius,
+                  onChanged: _onSelectYear,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
-

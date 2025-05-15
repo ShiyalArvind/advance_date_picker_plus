@@ -1,63 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:advanced_date_picker_plus/advanced_picker_plus_date_picker.dart';
 
-import 'package:get/get.dart';
-
-class PickerPlusDatePickerController extends GetxController {
-  late Rx<PickerType> pickerType;
-  late Rx<DateTime?> displayedDate;
-  late Rx<DateTime?> selectedDate;
-
-  final PickerPlusDatePicker widget;
-
-  PickerPlusDatePickerController(this.widget);
-  DateTime get _initialClampedDate {
-    final nowClamped = PickerPlusDateUtilsX.clampDateToRange(max: widget.maxDate, min: widget.minDate, date: DateTime.now());
-    return widget.initialDate ?? nowClamped;
-  }
-
-  @override
-  void onInit() {
-    // Ensure displayedDate is normalized (date-only) and within allowed range.
-    displayedDate = DateUtils.dateOnly(_initialClampedDate).obs;
-    pickerType = widget.initialPickerType.obs;
-    selectedDate = (widget.selectedDate != null ? DateUtils.dateOnly(widget.selectedDate!) : null).obs;
-    super.onInit();
-  }
-
-  void updateDisplayedDate(DateTime date) {
-    displayedDate.value = date;
-  }
-
-  void updateSelectedDate(DateTime? date) {
-    selectedDate.value = date;
-  }
-
-  void updatePickerType(PickerType type) {
-    pickerType.value = type;
-  }
-
-  void resetDisplayedDate() {
-    displayedDate.value = DateUtils.dateOnly(_initialClampedDate);
-  }
-
-  void updateFromWidget(PickerPlusDatePicker oldWidget, PickerPlusDatePicker newWidget) {
-    final bool initialDateChanged = oldWidget.initialDate != newWidget.initialDate;
-    final bool pickerTypeChanged = oldWidget.initialPickerType != newWidget.initialPickerType;
-    final bool selectedDateChanged = oldWidget.selectedDate != newWidget.selectedDate;
-
-    if (initialDateChanged) {
-      resetDisplayedDate();
-    }
-    if (pickerTypeChanged) {
-      pickerType.value = newWidget.initialPickerType;
-    }
-    if (selectedDateChanged) {
-      selectedDate.value = (newWidget.selectedDate != null ? DateUtils.dateOnly(newWidget.selectedDate!) : null);
-    }
-  }
-}
-
 class PickerPlusDatePicker extends StatefulWidget {
   PickerPlusDatePicker({
     super.key,
@@ -127,212 +70,239 @@ class PickerPlusDatePicker extends StatefulWidget {
   final String? previousPageSemanticLabel;
   final String? nextPageSemanticLabel;
   final DatePredicate? disabledDayPredicate;
-  final VoidCallback? onOk; // Callback for OK button
-  final VoidCallback? onCancel; // Callback for Cancel button
-  final bool showOkCancel; // Control to show/hide buttons
+  final VoidCallback? onOk;
+  final VoidCallback? onCancel;
+  final bool showOkCancel;
   final EdgeInsets? buttonPadding;
   final TextStyle? cancelButtonStyle;
   final TextStyle? okButtonStyle;
 
   @override
-  State<PickerPlusDatePicker> createState() => _DatePickerGetXState();
+  State<PickerPlusDatePicker> createState() => _DatePickerState();
 }
 
-class _DatePickerGetXState extends State<PickerPlusDatePicker> {
-  late final PickerPlusDatePickerController controller;
+class _DatePickerState extends State<PickerPlusDatePicker> {
+  late PickerType pickerType;
+  late DateTime displayedDate;
+  DateTime? selectedDate;
+
+  DateTime get _initialClampedDate {
+    final nowClamped = PickerPlusDateUtilsX.clampDateToRange(
+      max: widget.maxDate,
+      min: widget.minDate,
+      date: DateTime.now(),
+    );
+    return widget.initialDate ?? nowClamped;
+  }
 
   @override
   void initState() {
     super.initState();
-    controller = PickerPlusDatePickerController(widget);
-    controller.onInit();
+    pickerType = widget.initialPickerType;
+    displayedDate = DateUtils.dateOnly(_initialClampedDate);
+    selectedDate = widget.selectedDate != null ? DateUtils.dateOnly(widget.selectedDate!) : null;
   }
 
   @override
   void didUpdateWidget(covariant PickerPlusDatePicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    controller.updateFromWidget(oldWidget, widget);
-  }
 
-  void _handleDoubleTap(DateTime date) {
-    controller.updateDisplayedDate(date);
-    controller.updateSelectedDate(date);
-
-    if (widget.onDoubleTap != null) {
-      widget.onDateSelected?.call(date);
-      widget.onOk?.call();
-      widget.onDoubleTap!.call(date);
+    if (oldWidget.initialDate != widget.initialDate) {
+      setState(() {
+        displayedDate = DateUtils.dateOnly(_initialClampedDate);
+      });
+    }
+    if (oldWidget.initialPickerType != widget.initialPickerType) {
+      setState(() {
+        pickerType = widget.initialPickerType;
+      });
+    }
+    if (oldWidget.selectedDate != widget.selectedDate) {
+      setState(() {
+        selectedDate = widget.selectedDate != null ? DateUtils.dateOnly(widget.selectedDate!) : null;
+      });
     }
   }
 
+  void _updatePickerType(PickerType type) {
+    setState(() => pickerType = type);
+  }
+
+  void _updateDisplayedDate(DateTime date) {
+    setState(() => displayedDate = date);
+  }
+
+  void _updateSelectedDate(DateTime? date) {
+    setState(() => selectedDate = date);
+  }
+
+  void _handleDoubleTap(DateTime date) {
+    _updateDisplayedDate(date);
+    _updateSelectedDate(date);
+    widget.onDateSelected?.call(date);
+    widget.onOk?.call();
+    widget.onDoubleTap?.call(date);
+  }
+
   void _handleSingleTap(DateTime date) {
-    controller.updateDisplayedDate(date);
-    controller.updateSelectedDate(date);
+    _updateDisplayedDate(date);
+    _updateSelectedDate(date);
+    widget.onDateSelected?.call(date);
     if (!widget.showOkCancel) {
-      widget.onDateSelected?.call(date);
       widget.onOk?.call();
-    }else{
-      widget.onDateSelected?.call(date);
     }
   }
 
   void _handleOk() {
-    final picked = controller.selectedDate.value;
-    controller.updateDisplayedDate(picked!);
-    controller.updateSelectedDate(picked);
-    widget.onDateSelected?.call(picked);
+    if (selectedDate != null) {
+      _updateDisplayedDate(selectedDate!);
+      widget.onDateSelected?.call(selectedDate!);
       widget.onOk?.call();
+    }
   }
 
   void _handleCancel() {
-    controller.updateSelectedDate(null);
+    _updateSelectedDate(null);
     widget.onCancel?.call();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final pickerType = controller.pickerType.value;
-      final displayedDate = controller.displayedDate.value;
-      final selectedDate = controller.selectedDate.value;
+    Widget picker;
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
+    switch (pickerType) {
+      case PickerType.days:
+        picker = PickerPlusDaysPicker(
+          centerLeadingDate: widget.centerLeadingDate,
+          initialDate: displayedDate,
+          selectedDate: selectedDate,
+          currentDate: DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
+          maxDate: DateUtils.dateOnly(widget.maxDate),
+          minDate: DateUtils.dateOnly(widget.minDate),
+          daysOfTheWeekTextStyle: widget.daysOfTheWeekTextStyle,
+          enabledCellsTextStyle: widget.enabledCellsTextStyle,
+          enabledCellsDecoration: widget.enabledCellsDecoration,
+          disabledCellsTextStyle: widget.disabledCellsTextStyle,
+          disabledCellsDecoration: widget.disabledCellsDecoration,
+          currentDateDecoration: widget.currentDateDecoration,
+          currentDateTextStyle: widget.currentDateTextStyle,
+          selectedCellDecoration: widget.selectedCellDecoration,
+          selectedCellTextStyle: widget.selectedCellTextStyle,
+          slidersColor: widget.slidersColor,
+          slidersSize: widget.slidersSize,
+          leadingDateTextStyle: widget.leadingDateTextStyle,
+          splashColor: widget.splashColor,
+          highlightColor: widget.highlightColor,
+          splashRadius: widget.splashRadius,
+          previousPageSemanticLabel: widget.previousPageSemanticLabel,
+          nextPageSemanticLabel: widget.nextPageSemanticLabel,
+          disabledDayPredicate: widget.disabledDayPredicate,
+          onLeadingDateTap: () => _updatePickerType(PickerType.months),
+          onDoubleTap: widget.onDoubleTap != null ? _handleDoubleTap : null,
+          onDateSelected: _handleSingleTap,
+          onOk: widget.onOk,
+          showOkCancel: widget.showOkCancel,
+        );
+        break;
+      case PickerType.months:
+        picker = PickerPlusMonthPicker(
+          centerLeadingDate: widget.centerLeadingDate,
+          initialDate: displayedDate,
+          selectedDate: selectedDate,
+          currentDate: DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
+          maxDate: DateUtils.dateOnly(widget.maxDate),
+          minDate: DateUtils.dateOnly(widget.minDate),
+          currentDateDecoration: widget.currentDateDecoration,
+          currentDateTextStyle: widget.currentDateTextStyle,
+          disabledCellsDecoration: widget.disabledCellsDecoration,
+          disabledCellsTextStyle: widget.disabledCellsTextStyle,
+          enabledCellsDecoration: widget.enabledCellsDecoration,
+          enabledCellsTextStyle: widget.enabledCellsTextStyle,
+          selectedCellDecoration: widget.selectedCellDecoration,
+          selectedCellTextStyle: widget.selectedCellTextStyle,
+          slidersColor: widget.slidersColor,
+          slidersSize: widget.slidersSize,
+          leadingDateTextStyle: widget.leadingDateTextStyle,
+          splashColor: widget.splashColor,
+          highlightColor: widget.highlightColor,
+          splashRadius: widget.splashRadius,
+          previousPageSemanticLabel: widget.previousPageSemanticLabel,
+          nextPageSemanticLabel: widget.nextPageSemanticLabel,
+          onLeadingDateTap: () => _updatePickerType(PickerType.years),
+          onDateSelected: (selectedMonth) {
+            final clampedMonth = PickerPlusDateUtilsX.clampDateToRange(
+              min: widget.minDate,
+              max: widget.maxDate,
+              date: selectedMonth,
+            );
+            _updateDisplayedDate(clampedMonth);
+            _updatePickerType(PickerType.days);
+          },
+        );
+        break;
+      case PickerType.years:
+        picker = PickerPlusYearsPicker(
+          centerLeadingDate: widget.centerLeadingDate,
+          initialDate: displayedDate,
+          selectedDate: selectedDate,
+          currentDate: DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
+          maxDate: DateUtils.dateOnly(widget.maxDate),
+          minDate: DateUtils.dateOnly(widget.minDate),
+          currentDateDecoration: widget.currentDateDecoration,
+          currentDateTextStyle: widget.currentDateTextStyle,
+          disabledCellsDecoration: widget.disabledCellsDecoration,
+          disabledCellsTextStyle: widget.disabledCellsTextStyle,
+          enabledCellsDecoration: widget.enabledCellsDecoration,
+          enabledCellsTextStyle: widget.enabledCellsTextStyle,
+          selectedCellDecoration: widget.selectedCellDecoration,
+          selectedCellTextStyle: widget.selectedCellTextStyle,
+          slidersColor: widget.slidersColor,
+          slidersSize: widget.slidersSize,
+          leadingDateTextStyle: widget.leadingDateTextStyle,
+          splashColor: widget.splashColor,
+          highlightColor: widget.highlightColor,
+          splashRadius: widget.splashRadius,
+          previousPageSemanticLabel: widget.previousPageSemanticLabel,
+          nextPageSemanticLabel: widget.nextPageSemanticLabel,
+          onDateSelected: (selectedYear) {
+            final clampedYear = PickerPlusDateUtilsX.clampDateToRange(
+              min: widget.minDate,
+              max: widget.maxDate,
+              date: selectedYear,
+            );
+            _updateDisplayedDate(clampedYear);
+            _updatePickerType(PickerType.months);
+          },
+        );
+        break;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: widget.padding,
+          child: picker,
+        ),
+        if (widget.showOkCancel && pickerType == PickerType.days)
           Padding(
-            padding: widget.padding,
-            child: Builder(builder: (context) {
-              switch (pickerType) {
-                case PickerType.days:
-                  return PickerPlusDaysPicker(
-                    centerLeadingDate: widget.centerLeadingDate,
-                    initialDate: displayedDate,
-                    selectedDate: selectedDate,
-                    currentDate: DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
-                    maxDate: DateUtils.dateOnly(widget.maxDate),
-                    minDate: DateUtils.dateOnly(widget.minDate),
-                    daysOfTheWeekTextStyle: widget.daysOfTheWeekTextStyle,
-                    enabledCellsTextStyle: widget.enabledCellsTextStyle,
-                    enabledCellsDecoration: widget.enabledCellsDecoration,
-                    disabledCellsTextStyle: widget.disabledCellsTextStyle,
-                    disabledCellsDecoration: widget.disabledCellsDecoration,
-                    currentDateDecoration: widget.currentDateDecoration,
-                    currentDateTextStyle: widget.currentDateTextStyle,
-                    selectedCellDecoration: widget.selectedCellDecoration,
-                    selectedCellTextStyle: widget.selectedCellTextStyle,
-                    slidersColor: widget.slidersColor,
-                    slidersSize: widget.slidersSize,
-                    leadingDateTextStyle: widget.leadingDateTextStyle,
-                    splashColor: widget.splashColor,
-                    highlightColor: widget.highlightColor,
-                    splashRadius: widget.splashRadius,
-                    previousPageSemanticLabel: widget.previousPageSemanticLabel,
-                    nextPageSemanticLabel: widget.nextPageSemanticLabel,
-                    disabledDayPredicate: widget.disabledDayPredicate,
-                    onLeadingDateTap: () {
-                      controller.updatePickerType(PickerType.months);
-                    },
-                    onDoubleTap: widget.onDoubleTap != null
-                        ? _handleDoubleTap
-                        : null,
-                    onDateSelected: _handleSingleTap,
-                    onOk: widget.onOk,
-                    showOkCancel: widget.showOkCancel,
-                  );
-                case PickerType.months:
-                  return PickerPlusMonthPicker(
-                    centerLeadingDate: widget.centerLeadingDate,
-                    initialDate: displayedDate,
-                    selectedDate: selectedDate,
-                    currentDate: DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
-                    maxDate: DateUtils.dateOnly(widget.maxDate),
-                    minDate: DateUtils.dateOnly(widget.minDate),
-                    currentDateDecoration: widget.currentDateDecoration,
-                    currentDateTextStyle: widget.currentDateTextStyle,
-                    disabledCellsDecoration: widget.disabledCellsDecoration,
-                    disabledCellsTextStyle: widget.disabledCellsTextStyle,
-                    enabledCellsDecoration: widget.enabledCellsDecoration,
-                    enabledCellsTextStyle: widget.enabledCellsTextStyle,
-                    selectedCellDecoration: widget.selectedCellDecoration,
-                    selectedCellTextStyle: widget.selectedCellTextStyle,
-                    slidersColor: widget.slidersColor,
-                    slidersSize: widget.slidersSize,
-                    leadingDateTextStyle: widget.leadingDateTextStyle,
-                    splashColor: widget.splashColor,
-                    highlightColor: widget.highlightColor,
-                    splashRadius: widget.splashRadius,
-                    previousPageSemanticLabel: widget.previousPageSemanticLabel,
-                    nextPageSemanticLabel: widget.nextPageSemanticLabel,
-                    onLeadingDateTap: () {
-                      controller.updatePickerType(PickerType.years);
-                    },
-                    onDateSelected: (selectedMonth) {
-                      final clampedSelectedMonth = PickerPlusDateUtilsX.clampDateToRange(
-                        min: widget.minDate,
-                        max: widget.maxDate,
-                        date: selectedMonth,
-                      );
-                      controller.updateDisplayedDate(clampedSelectedMonth);
-                      controller.updatePickerType(PickerType.days);
-                    },
-                  );
-                case PickerType.years:
-                  return PickerPlusYearsPicker(
-                    centerLeadingDate: widget.centerLeadingDate,
-                    initialDate: displayedDate,
-                    selectedDate: selectedDate,
-                    currentDate: DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
-                    maxDate: DateUtils.dateOnly(widget.maxDate),
-                    minDate: DateUtils.dateOnly(widget.minDate),
-                    currentDateDecoration: widget.currentDateDecoration,
-                    currentDateTextStyle: widget.currentDateTextStyle,
-                    disabledCellsDecoration: widget.disabledCellsDecoration,
-                    disabledCellsTextStyle: widget.disabledCellsTextStyle,
-                    enabledCellsDecoration: widget.enabledCellsDecoration,
-                    enabledCellsTextStyle: widget.enabledCellsTextStyle,
-                    selectedCellDecoration: widget.selectedCellDecoration,
-                    selectedCellTextStyle: widget.selectedCellTextStyle,
-                    slidersColor: widget.slidersColor,
-                    slidersSize: widget.slidersSize,
-                    leadingDateTextStyle: widget.leadingDateTextStyle,
-                    splashColor: widget.splashColor,
-                    highlightColor: widget.highlightColor,
-                    splashRadius: widget.splashRadius,
-                    previousPageSemanticLabel: widget.previousPageSemanticLabel,
-                    nextPageSemanticLabel: widget.nextPageSemanticLabel,
-                    onDateSelected: (selectedYear) {
-                      final clampedSelectedYear = PickerPlusDateUtilsX.clampDateToRange(
-                        min: widget.minDate,
-                        max: widget.maxDate,
-                        date: selectedYear,
-                      );
-                      controller.updateDisplayedDate(clampedSelectedYear);
-                      controller.updatePickerType(PickerType.months);
-                    },
-                  );
-              }
-            }),
-          ),
-          if (widget.showOkCancel && controller.pickerType.value == PickerType.days)
-            Padding(
-              padding: widget.buttonPadding ?? EdgeInsets.all(10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: _handleCancel,
-                    child: Text('Cancel', style: widget.cancelButtonStyle,),
-                  ),
-                  TextButton(
-                    onPressed: _handleOk,
-                    child: Text('OK', style: widget.okButtonStyle,),
-                  ),
-                ],
-              ),
+            padding: widget.buttonPadding ?? EdgeInsets.all(10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: _handleCancel,
+                  child: Text('Cancel', style: widget.cancelButtonStyle),
+                ),
+                TextButton(
+                  onPressed: _handleOk,
+                  child: Text('OK', style: widget.okButtonStyle),
+                ),
+              ],
             ),
-        ],
-      );
-    });
+          ),
+      ],
+    );
   }
 }

@@ -1,142 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:advanced_date_picker_plus/advanced_picker_plus_date_picker.dart';
 
-import 'package:get/get.dart';
-
 import 'picker_plus_days_view.dart';
 
-class PickerPlusDaysPickerController extends GetxController {
-  final DateTime minDate;
-  final DateTime maxDate;
-  final DateTime? initialDate;
-  final DateTime? currentDate;
-  final DateTime? selectedDate;
-  final ValueChanged<DateTime>? onDateSelected;
-  final ValueChanged<DateTime>? onDoubleTap;
-  final VoidCallback? onLeadingDateTap;
-  final DatePredicate? disabledDayPredicate;
-  final TextStyle? daysOfTheWeekTextStyle;
-  final TextStyle? enabledCellsTextStyle;
-  final BoxDecoration enabledCellsDecoration;
-  final TextStyle? disabledCellsTextStyle;
-  final BoxDecoration disabledCellsDecoration;
-  final TextStyle? currentDateTextStyle;
-  final BoxDecoration? currentDateDecoration;
-  final TextStyle? selectedCellTextStyle;
-  final BoxDecoration? selectedCellDecoration;
-  final TextStyle? leadingDateTextStyle;
-  final Color? slidersColor;
-  final double? slidersSize;
-  final Color? splashColor;
-  final Color? highlightColor;
-  final double? splashRadius;
-  final bool centerLeadingDate;
-  final String? previousPageSemanticLabel;
-  final String? nextPageSemanticLabel;
-  final bool showOkCancel;
-  late Rx<DateTime?> displayedMonth;
-  late Rx<DateTime?> selectedDay;
-  late PageController pageController;
-  final VoidCallback? onOk;
-
-  PickerPlusDaysPickerController({
-    required this.minDate,
-    required this.maxDate,
-    this.initialDate,
-    this.currentDate,
-    this.selectedDate,
-    this.daysOfTheWeekTextStyle,
-    this.enabledCellsTextStyle,
-    this.enabledCellsDecoration = const BoxDecoration(),
-    this.disabledCellsTextStyle,
-    this.disabledCellsDecoration = const BoxDecoration(),
-    this.currentDateTextStyle,
-    this.currentDateDecoration,
-    this.selectedCellTextStyle,
-    this.selectedCellDecoration,
-    this.onLeadingDateTap,
-    this.onDateSelected,
-    this.onDoubleTap,
-    this.showOkCancel = true,
-    this.leadingDateTextStyle,
-    this.slidersColor,
-    this.slidersSize,
-    this.splashColor,
-    this.highlightColor,
-    this.splashRadius,
-    this.centerLeadingDate = false,
-    this.previousPageSemanticLabel = 'Previous Day',
-    this.nextPageSemanticLabel = 'Next Day',
-    this.disabledDayPredicate,
-    this.onOk,
-  });
-
-  @override
-  void onInit() {
-    final clampedInitialDate = PickerPlusDateUtilsX.clampDateToRange(
-      max: maxDate,
-      min: minDate,
-      date: DateTime.now(),
-    );
-    displayedMonth = DateUtils.dateOnly(initialDate ?? clampedInitialDate).obs;
-    selectedDay = (selectedDate != null ? DateUtils.dateOnly(selectedDate!) : null).obs;
-    pageController = PageController(
-      initialPage: DateUtils.monthDelta(minDate, displayedMonth.value!),
-    );
-    super.onInit();
-  }
-
-  void onPageChanged(int monthPage) {
-    final DateTime monthDate = DateUtils.addMonthsToMonthDate(minDate, monthPage);
-    displayedMonth.value = monthDate;
-  }
-
-  void onUserSelectedDay(DateTime value) {
-    selectedDay.value = value;
-    onDateSelected?.call(value);
-    if (!showOkCancel) {
-      onOk?.call();
-    }
-  }
-
-  void onUserDoubleTapDay(DateTime value) {
-    selectedDay.value = value;
-    onDateSelected?.call(value);
-    onDoubleTap?.call(value);
-  }
-
-  void jumpToInitialPage(DateTime? newInitialDate) {
-    final clampedInitialDate = PickerPlusDateUtilsX.clampDateToRange(
-      max: maxDate,
-      min: minDate,
-      date: DateTime.now(),
-    );
-    final DateTime initial = DateUtils.dateOnly(newInitialDate ?? clampedInitialDate);
-    displayedMonth.value = initial;
-    pageController.jumpToPage(
-      DateUtils.monthDelta(minDate, initial),
-    );
-  }
-
-  void updateSelectedDayFromWidget(DateTime? v) {
-    selectedDay.value = v != null ? DateUtils.dateOnly(v) : null;
-  }
-
-  @override
-  void onClose() {
-    pageController.dispose();
-    super.onClose();
-  }
-}
-
-class PickerPlusDaysPicker extends StatelessWidget {
-  PickerPlusDaysPicker({
+class PickerPlusDaysPicker extends StatefulWidget {
+  const PickerPlusDaysPicker({
     super.key,
     required this.minDate,
     required this.maxDate,
     this.initialDate,
     this.currentDate,
     this.selectedDate,
+    this.onDateSelected,
+    this.onDoubleTap,
+    this.showOkCancel = true,
+    this.onOk,
+    this.onLeadingDateTap,
     this.daysOfTheWeekTextStyle,
     this.enabledCellsTextStyle,
     this.enabledCellsDecoration = const BoxDecoration(),
@@ -146,10 +25,6 @@ class PickerPlusDaysPicker extends StatelessWidget {
     this.currentDateDecoration,
     this.selectedCellTextStyle,
     this.selectedCellDecoration,
-    this.onLeadingDateTap,
-    this.onDateSelected,
-    this.onDoubleTap,
-    required this.showOkCancel ,
     this.leadingDateTextStyle,
     this.slidersColor,
     this.slidersSize,
@@ -160,38 +35,16 @@ class PickerPlusDaysPicker extends StatelessWidget {
     this.previousPageSemanticLabel = 'Previous Day',
     this.nextPageSemanticLabel = 'Next Day',
     this.disabledDayPredicate,
-    this.onOk,
+  });
 
-  }) {
-    assert(!minDate.isAfter(maxDate), "minDate can't be after maxDate");
-    assert(
-        () {
-      if (initialDate == null) return true;
-      final init = DateTime(initialDate!.year, initialDate!.month, initialDate!.day);
-      final min = DateTime(minDate.year, minDate.month, minDate.day);
-      return init.isAfter(min) || init.isAtSameMomentAs(min);
-    }(),
-    'initialDate $initialDate must be on or after minDate $minDate.',
-    );
-    assert(
-        () {
-      if (initialDate == null) return true;
-      final init = DateTime(initialDate!.year, initialDate!.month, initialDate!.day);
-      final max = DateTime(maxDate.year, maxDate.month, maxDate.day);
-      return init.isBefore(max) || init.isAtSameMomentAs(max);
-    }(),
-    'initialDate $initialDate must be on or before maxDate $maxDate.',
-    );
-  }
-
+  final DateTime minDate;
+  final DateTime maxDate;
   final DateTime? initialDate;
   final DateTime? currentDate;
   final DateTime? selectedDate;
   final ValueChanged<DateTime>? onDateSelected;
   final ValueChanged<DateTime>? onDoubleTap;
-  final bool showOkCancel;
-  final DateTime minDate;
-  final DateTime maxDate;
+  final VoidCallback? onOk;
   final VoidCallback? onLeadingDateTap;
   final TextStyle? daysOfTheWeekTextStyle;
   final TextStyle? enabledCellsTextStyle;
@@ -211,207 +64,198 @@ class PickerPlusDaysPicker extends StatelessWidget {
   final bool centerLeadingDate;
   final String? previousPageSemanticLabel;
   final String? nextPageSemanticLabel;
+  final bool showOkCancel;
   final DatePredicate? disabledDayPredicate;
-  final VoidCallback? onOk;
+
+  @override
+  State<PickerPlusDaysPicker> createState() => _PickerPlusDaysPickerState();
+}
+
+class _PickerPlusDaysPickerState extends State<PickerPlusDaysPicker> {
+  late DateTime displayedMonth;
+  DateTime? selectedDay;
+  late PageController pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    final clampedInitialDate = PickerPlusDateUtilsX.clampDateToRange(
+      date: widget.initialDate ?? DateTime.now(),
+      min: widget.minDate,
+      max: widget.maxDate,
+    );
+    displayedMonth = DateUtils.dateOnly(clampedInitialDate);
+    selectedDay = widget.selectedDate != null ? DateUtils.dateOnly(widget.selectedDate!) : null;
+    pageController = PageController(
+      initialPage: DateUtils.monthDelta(widget.minDate, displayedMonth),
+    );
+  }
+
+  @override
+  void dispose() {
+    pageController.dispose();
+    super.dispose();
+  }
+
+  void onPageChanged(int monthPage) {
+    setState(() {
+      displayedMonth = DateUtils.addMonthsToMonthDate(widget.minDate, monthPage);
+    });
+  }
+
+  void onUserSelectedDay(DateTime value) {
+    setState(() => selectedDay = value);
+    widget.onDateSelected?.call(value);
+    if (!widget.showOkCancel) {
+      widget.onOk?.call();
+    }
+  }
+
+  void onUserDoubleTapDay(DateTime value) {
+    setState(() => selectedDay = value);
+    widget.onDateSelected?.call(value);
+    widget.onDoubleTap?.call(value);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<PickerPlusDaysPickerController>(
-      init: PickerPlusDaysPickerController(
-        minDate: minDate,
-        maxDate: maxDate,
-        initialDate: initialDate,
-        currentDate: currentDate,
-        selectedDate: selectedDate,
-        onDoubleTap: onDoubleTap,
-        daysOfTheWeekTextStyle: daysOfTheWeekTextStyle,
-        enabledCellsTextStyle: enabledCellsTextStyle,
-        enabledCellsDecoration: enabledCellsDecoration,
-        disabledCellsTextStyle: disabledCellsTextStyle,
-        disabledCellsDecoration: disabledCellsDecoration,
-        currentDateTextStyle: currentDateTextStyle,
-        currentDateDecoration: currentDateDecoration,
-        selectedCellTextStyle: selectedCellTextStyle,
-        selectedCellDecoration: selectedCellDecoration,
-        onLeadingDateTap: onLeadingDateTap,
-        onDateSelected: onDateSelected,
-        leadingDateTextStyle: leadingDateTextStyle,
-        slidersColor: slidersColor,
-        slidersSize: slidersSize,
-        splashColor: splashColor,
-        highlightColor: highlightColor,
-        splashRadius: splashRadius,
-        centerLeadingDate: centerLeadingDate,
-        previousPageSemanticLabel: previousPageSemanticLabel,
-        nextPageSemanticLabel: nextPageSemanticLabel,
-        disabledDayPredicate: disabledDayPredicate,
-        onOk: onOk,
-        showOkCancel: showOkCancel,
-      ),
-      global: false,
-      builder: (controller) {
-        final ColorScheme colorScheme = Theme.of(context).colorScheme;
-        final TextTheme textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-        final TextStyle daysOfTheWeekTextStyleLocal = daysOfTheWeekTextStyle ??
-            textTheme.titleSmall!.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.30),
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            );
-        final TextStyle enabledCellsTextStyleLocal = enabledCellsTextStyle ??
-            textTheme.titleLarge!.copyWith(
-              fontWeight: FontWeight.normal,
-              color: colorScheme.onSurface,
-            );
-        final BoxDecoration enabledCellsDecorationLocal = enabledCellsDecoration;
+    final TextStyle daysOfTheWeekTextStyle = widget.daysOfTheWeekTextStyle ??
+        textTheme.titleSmall!.copyWith(
+          color: colorScheme.onSurface.withOpacity(0.3),
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        );
 
-        final TextStyle disabledCellsTextStyleLocal = disabledCellsTextStyle ??
-            textTheme.titleLarge!.copyWith(
-              fontWeight: FontWeight.normal,
-              color: colorScheme.onSurface.withOpacity(0.30),
-            );
-        final BoxDecoration disabledCellsDecorationLocal = disabledCellsDecoration;
+    final TextStyle enabledCellsTextStyle = widget.enabledCellsTextStyle ??
+        textTheme.titleLarge!.copyWith(
+          fontWeight: FontWeight.normal,
+          color: colorScheme.onSurface,
+        );
 
-        final TextStyle currentDateTextStyleLocal = currentDateTextStyle ??
-            textTheme.titleLarge!.copyWith(
-              fontWeight: FontWeight.normal,
-              color: colorScheme.primary,
-            );
-        final BoxDecoration currentDateDecorationLocal = currentDateDecoration ??
-            BoxDecoration(
-              border: Border.all(color: colorScheme.primary),
-              shape: BoxShape.circle,
-            );
+    final TextStyle disabledCellsTextStyle = widget.disabledCellsTextStyle ??
+        textTheme.titleLarge!.copyWith(
+          fontWeight: FontWeight.normal,
+          color: colorScheme.onSurface.withOpacity(0.3),
+        );
 
-        final TextStyle selectedCellTextStyleLocal = selectedCellTextStyle ??
-            textTheme.titleLarge!.copyWith(
-              fontWeight: FontWeight.normal,
-              color: colorScheme.onPrimary,
-            );
-        final BoxDecoration selectedCellDecorationLocal = selectedCellDecoration ??
-            BoxDecoration(
-              color: colorScheme.primary,
-              shape: BoxShape.circle,
-            );
+    final TextStyle currentDateTextStyle = widget.currentDateTextStyle ??
+        textTheme.titleLarge!.copyWith(
+          fontWeight: FontWeight.normal,
+          color: colorScheme.primary,
+        );
 
-        final leadingDateTextStyleLocal = leadingDateTextStyle ??
-            TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: colorScheme.primary,
-            );
-        final slidersColorLocal = slidersColor ?? colorScheme.primary;
-        final slidersSizeLocal = slidersSize ?? 20;
-        final splashColorLocal = splashColor ??
-            selectedCellDecorationLocal.color?.withOpacity(0.3) ??
-            colorScheme.primary.withOpacity(0.3);
-        final highlightColorLocal = highlightColor ??
-            selectedCellDecorationLocal.color?.withOpacity(0.3) ??
-            colorScheme.primary.withOpacity(0.3);
+    final BoxDecoration currentDateDecoration = widget.currentDateDecoration ??
+        BoxDecoration(
+          border: Border.all(color: colorScheme.primary),
+          shape: BoxShape.circle,
+        );
 
-        return Obx(() {
-          final displayedMonth = controller.displayedMonth.value!;
-          final selectedDate = controller.selectedDay.value;
+    final TextStyle selectedCellTextStyle = widget.selectedCellTextStyle ??
+        textTheme.titleLarge!.copyWith(
+          fontWeight: FontWeight.normal,
+          color: colorScheme.onPrimary,
+        );
 
-          final itemCount = DateUtils.monthDelta(minDate, maxDate) + 1;
-          final Size size = MediaQuery.of(context).orientation == Orientation.portrait
-              ? const Size(328.0, 402.0)
-              : const Size(328.0, 300.0);
+    final BoxDecoration selectedCellDecoration = widget.selectedCellDecoration ??
+        BoxDecoration(
+          color: colorScheme.primary,
+          shape: BoxShape.circle,
+        );
 
-          return LimitedBox(
-            maxHeight: size.height,
-            maxWidth: size.width,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                PickerPlusHeader(
-                  centerLeadingDate: centerLeadingDate,
-                  leadingDateTextStyle: leadingDateTextStyleLocal,
-                  slidersColor: slidersColorLocal,
-                  slidersSize: slidersSizeLocal,
-                  onDateTap: () => onLeadingDateTap?.call(),
-                  displayedDate: MaterialLocalizations.of(context)
-                      .formatMonthYear(displayedMonth)
-                      .replaceAll('٩', '9')
-                      .replaceAll('٨', '8')
-                      .replaceAll('٧', '7')
-                      .replaceAll('٦', '6')
-                      .replaceAll('٥', '5')
-                      .replaceAll('٤', '4')
-                      .replaceAll('٣', '3')
-                      .replaceAll('٢', '2')
-                      .replaceAll('١', '1')
-                      .replaceAll('٠', '0'),
-                  onNextPage: () {
-                    final current = controller.pageController.page?.round() ??
-                        controller.pageController.initialPage;
-                    if (current < itemCount - 1) {
-                      controller.pageController.nextPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.ease,
-                      );
-                    }
-                  },
-                  onPreviousPage: () {
-                    final current = controller.pageController.page?.round() ??
-                        controller.pageController.initialPage;
-                    if (current > 0) {
-                      controller.pageController.previousPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.ease,
-                      );
-                    }
-                  },
-                  previousPageSemanticLabel: previousPageSemanticLabel,
-                  nextPageSemanticLabel: nextPageSemanticLabel,
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: PageView.builder(
-                    scrollDirection: Axis.horizontal,
-                    controller: controller.pageController,
-                    itemCount: itemCount,
-                    onPageChanged: (monthPage) {
-                      // Clamp index for robustness.
-                      final totalMonths = DateUtils.monthDelta(minDate, maxDate);
-                      final clampedPage = monthPage.clamp(0, totalMonths);
-                      controller.onPageChanged(clampedPage);
-                    },
-                    itemBuilder: (context, index) {
-                      final DateTime month = DateUtils.addMonthsToMonthDate(minDate, index);
-                      return PickerPlusDaysView(
-                        key: ValueKey<DateTime>(month),
-                        currentDate: DateUtils.dateOnly(currentDate ?? DateTime.now()),
-                        maxDate: DateUtils.dateOnly(maxDate),
-                        minDate: DateUtils.dateOnly(minDate),
-                        displayedMonth: month,
-                        selectedDate: selectedDate,
-                        daysOfTheWeekTextStyle: daysOfTheWeekTextStyleLocal,
-                        enabledCellsTextStyle: enabledCellsTextStyleLocal,
-                        enabledCellsDecoration: enabledCellsDecorationLocal,
-                        disabledCellsTextStyle: disabledCellsTextStyleLocal,
-                        disabledCellsDecoration: disabledCellsDecorationLocal,
-                        currentDateDecoration: currentDateDecorationLocal,
-                        currentDateTextStyle: currentDateTextStyleLocal,
-                        selectedDayDecoration: selectedCellDecorationLocal,
-                        selectedDayTextStyle: selectedCellTextStyleLocal,
-                        highlightColor: highlightColorLocal,
-                        splashColor: splashColorLocal,
-                        splashRadius: splashRadius,
-                        disabledDayPredicate: disabledDayPredicate,
-                        onChanged: controller.onUserSelectedDay,
-                        onDoubleTap: controller.onUserDoubleTapDay,
-                      );
-                    },
-                  ),
-                ),
-              ],
+    final leadingDateTextStyle = widget.leadingDateTextStyle ??
+        TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colorScheme.primary);
+
+    final slidersColor = widget.slidersColor ?? colorScheme.primary;
+    final slidersSize = widget.slidersSize ?? 20.0;
+
+    final splashColor = widget.splashColor ??
+        selectedCellDecoration.color?.withOpacity(0.3) ??
+        colorScheme.primary.withOpacity(0.3);
+
+    final highlightColor = widget.highlightColor ??
+        selectedCellDecoration.color?.withOpacity(0.3) ??
+        colorScheme.primary.withOpacity(0.3);
+
+    final Size size = MediaQuery.of(context).orientation == Orientation.portrait
+        ? const Size(328.0, 402.0)
+        : const Size(328.0, 300.0);
+
+    final int itemCount = DateUtils.monthDelta(widget.minDate, widget.maxDate) + 1;
+
+    return LimitedBox(
+      maxHeight: size.height,
+      maxWidth: size.width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PickerPlusHeader(
+            centerLeadingDate: widget.centerLeadingDate,
+            leadingDateTextStyle: leadingDateTextStyle,
+            slidersColor: slidersColor,
+            slidersSize: slidersSize,
+            onDateTap: () => widget.onLeadingDateTap?.call(),
+            displayedDate: MaterialLocalizations.of(context)
+                .formatMonthYear(displayedMonth)
+                .replaceAllMapped(RegExp('[٠-٩]'), (match) => (int.parse(match.group(0)!) + 0).toString()),
+            onNextPage: () {
+              final current = pageController.page?.round() ?? pageController.initialPage;
+              if (current < itemCount - 1) {
+                pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.ease);
+              }
+            },
+            onPreviousPage: () {
+              final current = pageController.page?.round() ?? pageController.initialPage;
+              if (current > 0) {
+                pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.ease);
+              }
+            },
+            previousPageSemanticLabel: widget.previousPageSemanticLabel,
+            nextPageSemanticLabel: widget.nextPageSemanticLabel,
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: PageView.builder(
+              scrollDirection: Axis.horizontal,
+              controller: pageController,
+              itemCount: itemCount,
+              onPageChanged: (monthPage) {
+                final totalMonths = DateUtils.monthDelta(widget.minDate, widget.maxDate);
+                final clampedPage = monthPage.clamp(0, totalMonths);
+                onPageChanged(clampedPage);
+              },
+              itemBuilder: (context, index) {
+                final month = DateUtils.addMonthsToMonthDate(widget.minDate, index);
+                return PickerPlusDaysView(
+                  key: ValueKey<DateTime>(month),
+                  currentDate: DateUtils.dateOnly(widget.currentDate ?? DateTime.now()),
+                  maxDate: DateUtils.dateOnly(widget.maxDate),
+                  minDate: DateUtils.dateOnly(widget.minDate),
+                  displayedMonth: month,
+                  selectedDate: selectedDay,
+                  daysOfTheWeekTextStyle: daysOfTheWeekTextStyle,
+                  enabledCellsTextStyle: enabledCellsTextStyle,
+                  enabledCellsDecoration: widget.enabledCellsDecoration,
+                  disabledCellsTextStyle: disabledCellsTextStyle,
+                  disabledCellsDecoration: widget.disabledCellsDecoration,
+                  currentDateTextStyle: currentDateTextStyle,
+                  currentDateDecoration: currentDateDecoration,
+                  selectedDayTextStyle: selectedCellTextStyle,
+                  selectedDayDecoration: selectedCellDecoration,
+                  splashColor: splashColor,
+                  highlightColor: highlightColor,
+                  splashRadius: widget.splashRadius,
+                  disabledDayPredicate: widget.disabledDayPredicate,
+                  onChanged: onUserSelectedDay,
+                  onDoubleTap: onUserDoubleTapDay,
+                );
+              },
             ),
-          );
-        });
-      },
+          ),
+        ],
+      ),
     );
   }
 }
