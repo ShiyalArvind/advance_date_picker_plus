@@ -1,6 +1,6 @@
 name: advanced_date_picker_plus
 description: "A Flutter package that provides a custom date picker with advanced features"
-version: 0.0.1
+version: 1.0.0
 homepage: https://github.com/ShiyalArvind/advance_date_picker_plus/tree/main
 
 environment:
